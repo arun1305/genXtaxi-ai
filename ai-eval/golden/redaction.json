@@ -1,0 +1,11 @@
+{
+  "description": "PII redaction (spec §1/§5): phone, card PAN, GPS, email must never leave to a provider.",
+  "threshold": 1.0,
+  "cases": [
+    { "input": "call me on +213 555 12 34 56", "mustNotContain": ["555 12 34 56"], "mustContain": ["[REDACTED_PHONE]"] },
+    { "input": "card 4111 1111 1111 1111", "mustNotContain": ["4111"], "mustContain": ["[REDACTED_CARD]"] },
+    { "input": "I am at 36.75340, 3.05880", "mustNotContain": ["36.75340"], "mustContain": ["[REDACTED_GPS]"] },
+    { "input": "email rider@example.com", "mustNotContain": ["rider@example.com"], "mustContain": ["[REDACTED_EMAIL]"] },
+    { "input": "Where is my driver?", "mustNotContain": ["[REDACTED"], "mustContain": ["Where is my driver?"] }
+  ]
+}

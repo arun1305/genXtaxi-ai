@@ -1,0 +1,10 @@
+{
+  "description": "Chatbot FAQ correctness + language (spec §2.9: >=90% correct with correct language). LIVE eval — runs against ai-gateway when EVAL_GATEWAY_URL + EVAL_TOKEN are set.",
+  "threshold": 0.9,
+  "cases": [
+    { "lang": "fr", "q": "Comment annuler ma course ?", "expectLang": "fr", "mustMentionAny": ["annul", "course"] },
+    { "lang": "fr", "q": "Comment reserver un taxi ?", "expectLang": "fr", "mustMentionAny": ["réserv", "reserv", "taxi", "appli"] },
+    { "lang": "en", "q": "How do I pay for my ride?", "expectLang": "en", "mustMentionAny": ["pay", "card", "wallet", "cash"] },
+    { "lang": "ar", "q": "كيف أحجز سيارة أجرة؟", "expectLang": "ar", "mustMentionAny": ["حجز", "سيارة", "تطبيق"] }
+  ]
+}

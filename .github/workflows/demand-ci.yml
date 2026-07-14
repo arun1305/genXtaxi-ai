@@ -1,0 +1,25 @@
+name: demand-service CI
+
+on:
+  push:
+    paths:
+      - 'demand-service/**'
+      - '.github/workflows/demand-ci.yml'
+  pull_request:
+    paths:
+      - 'demand-service/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        working-directory: demand-service
+        run: pip install -r requirements.txt
+      - name: Run tests
+        working-directory: demand-service
+        run: python -m pytest -q

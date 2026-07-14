@@ -1,0 +1,12 @@
+{
+  "description": "Grounding rule (spec §2.4/§2.9): reply may only contain currency amounts from tool results.",
+  "threshold": 1.0,
+  "cases": [
+    { "reply": "Your driver is 5 minutes away.", "allowed": [], "expectGrounded": true },
+    { "reply": "The fare is 250 DZD.", "allowed": [{ "amount": 25000, "currency": "DZD" }], "expectGrounded": true },
+    { "reply": "That is 25000 DZD in centimes.", "allowed": [{ "amount": 25000, "currency": "DZD" }], "expectGrounded": true },
+    { "reply": "The fare is 999 DZD.", "allowed": [{ "amount": 25000, "currency": "DZD" }], "expectGrounded": false },
+    { "reply": "It costs €42 total.", "allowed": [{ "amount": 25000, "currency": "DZD" }], "expectGrounded": false },
+    { "reply": "Refund of 500 DZD processed.", "allowed": [{ "amount": 50000, "currency": "DZD" }], "expectGrounded": true }
+  ]
+}

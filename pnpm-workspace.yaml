@@ -1,0 +1,6 @@
+packages:
+  - 'packages/*'
+  - 'ai-gateway'
+  - 'currency-service'
+  - 'chat-orchestrator'
+  - 'insights-service'

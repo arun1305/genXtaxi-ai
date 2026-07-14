@@ -1,0 +1,40 @@
+# ── GenXTaxi AI platform repo — ignore everything except the AI services ──────
+# The four app repos are their own git repos; do not track them here.
+gen-taxi-backend/
+gen-taxi-frontend/
+gen-taxi-admin/
+genxtaxi-nestjs-backend/
+gen-taxi-landing/
+screenshots/
+/src/
+/tests/
+.expo/
+.vscode/
+.claude/
+
+# Secrets — never commit
+**/.env
+**/.env.*
+!**/.env.example
+*firebase-adminsdk*.json
+google-services*.json
+GoogleService-Info*.plist
+
+# Node / build artifacts
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+coverage/
+openapi.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+demand-service/.venv/
+
+# Binaries / misc
+*.apk
+.DS_Store
+.npmrc

@@ -1,0 +1,22 @@
+{
+  "name": "@genxtaxi/ai-shared",
+  "version": "1.0.0",
+  "description": "Shared value objects, provider interfaces, auth primitives and error types for GenXTaxi AI services.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "jest"
+  },
+  "peerDependencies": {},
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,145 @@
+# GenXTaxi AI platform — Render Blueprint (spec §1 topology).
+# Deploys the 5 AI services from their Dockerfiles. Secrets (sync:false) are set
+# in the Render dashboard, NOT committed. Internal calls use the public *.onrender
+# URLs; each service listens on Render's injected $PORT.
+#
+# Prereq: this repo (the AI services) must be a GitHub repo connected to Render.
+# Redis + MongoDB: use Render Key-Value (Redis) + MongoDB Atlas; put their URLs
+# into REDIS_URL / MONGODB_URI as dashboard secrets.
+
+services:
+  # ── ai-gateway ─────────────────────────────────────────────────────────────
+  - type: web
+    name: gentaxi-ai-gateway
+    runtime: docker
+    dockerfilePath: ./ai-gateway/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: EMBEDDING_PROVIDER
+        value: local          # switch to `cohere` + set COHERE_API_KEY for prod-grade RAG
+      - key: EMBEDDING_DIMENSIONS
+        value: "1024"
+      - key: CURRENCY_SERVICE_URL
+        value: https://gentaxi-currency.onrender.com
+      - key: DEMAND_SERVICE_URL
+        value: https://gentaxi-demand.onrender.com
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET          # MUST equal gentaxi-backend's JWT_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  # ── currency-service ───────────────────────────────────────────────────────
+  - type: web
+    name: gentaxi-currency
+    runtime: docker
+    dockerfilePath: ./currency-service/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: FX_API_URL
+        value: https://api.exchangerate.host/latest
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+
+  # ── chat-orchestrator ──────────────────────────────────────────────────────
+  - type: web
+    name: gentaxi-chat
+    runtime: docker
+    dockerfilePath: ./chat-orchestrator/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: AI_GATEWAY_URL
+        value: https://gentaxi-ai-gateway.onrender.com
+      - key: CURRENCY_SERVICE_URL
+        value: https://gentaxi-currency.onrender.com
+      - key: GEN_TAXI_BACKEND_URL
+        value: https://gentaxi-backend.onrender.com
+      - key: MARKET
+        value: Algeria
+      - key: DEFAULT_LANG
+        value: fr
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+
+  # ── insights-service ───────────────────────────────────────────────────────
+  - type: web
+    name: gentaxi-insights
+    runtime: docker
+    dockerfilePath: ./insights-service/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: AI_GATEWAY_URL
+        value: https://gentaxi-ai-gateway.onrender.com
+      - key: DEFAULT_LANG
+        value: fr
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: INSIGHTS_SERVICE_TOKEN   # long-lived admin JWT for batch LLM calls
+        sync: false
+
+  # ── demand-service (Python/FastAPI) ────────────────────────────────────────
+  - type: web
+    name: gentaxi-demand
+    runtime: docker
+    dockerfilePath: ./demand-service/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: ENV
+        value: production
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: SURGE_ADVISORY
+        value: "true"
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: genxtaxi_ai
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false

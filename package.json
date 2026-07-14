@@ -1,0 +1,21 @@
+{
+  "name": "genxtaxi-ai-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GenXTaxi AI platform — ai-gateway, currency-service, and shared libraries (Phase 1 foundation).",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter ./packages/** run build && pnpm -r --filter ./ai-gateway --filter ./currency-service run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "dev:gateway": "pnpm --filter ai-gateway run start:dev",
+    "dev:currency": "pnpm --filter currency-service run start:dev",
+    "openapi": "pnpm --filter ai-gateway run openapi && pnpm --filter currency-service run openapi",
+    "docker:up": "docker compose -f docker/docker-compose.ai.yml up -d",
+    "docker:down": "docker compose -f docker/docker-compose.ai.yml down"
+  },
+  "packageManager": "pnpm@8.15.0"
+}

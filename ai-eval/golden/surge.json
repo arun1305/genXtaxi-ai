@@ -1,0 +1,11 @@
+{
+  "description": "Surge engine (spec §4.9): never exceeds cap; kill-switch forces 1.0; override capped.",
+  "threshold": 1.0,
+  "maxSurge": 2.0,
+  "cases": [
+    { "predicted": 5, "drivers": 10, "expectMax": 2.0, "expectMin": 1.0, "expect": 1.0 },
+    { "predicted": 100, "drivers": 1, "expectMax": 2.0, "expectMin": 1.0 },
+    { "predicted": 1000, "drivers": 1, "killSwitch": true, "expect": 1.0 },
+    { "predicted": 0, "drivers": 99, "override": 5.0, "expect": 2.0 }
+  ]
+}

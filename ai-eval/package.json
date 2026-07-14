@@ -1,0 +1,10 @@
+{
+  "name": "@genxtaxi/ai-eval",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Golden-set evaluation harness / regression gate for GenXTaxi AI features (spec §5).",
+  "scripts": {
+    "eval": "node run-eval.mjs"
+  }
+}

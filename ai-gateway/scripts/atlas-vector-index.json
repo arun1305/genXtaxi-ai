@@ -1,0 +1,21 @@
+{
+  "//": "Atlas Search knnVector index for kb_chunks (spec §2.6). Create via `atlas search indexes create --file` or the Atlas UI. Name MUST equal VectorSearchService.INDEX ('kb_chunks_vector'). Dimensions MUST equal EMBEDDING_DIMENSIONS (1024).",
+  "database": "genxtaxi_ai",
+  "collectionName": "kb_chunks",
+  "name": "kb_chunks_vector",
+  "type": "vectorSearch",
+  "definition": {
+    "fields": [
+      {
+        "type": "vector",
+        "path": "embedding",
+        "numDimensions": 1024,
+        "similarity": "cosine"
+      },
+      {
+        "type": "filter",
+        "path": "lang"
+      }
+    ]
+  }
+}

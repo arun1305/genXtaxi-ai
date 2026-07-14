@@ -1,0 +1,74 @@
+name: AI Platform CI
+
+on:
+  push:
+    paths:
+      - 'packages/ai-shared/**'
+      - 'ai-gateway/**'
+      - 'currency-service/**'
+      - 'chat-orchestrator/**'
+      - 'insights-service/**'
+      - 'ai-eval/**'
+      - '.github/workflows/ai-ci.yml'
+  pull_request:
+    paths:
+      - 'packages/ai-shared/**'
+      - 'ai-gateway/**'
+      - 'currency-service/**'
+      - 'chat-orchestrator/**'
+      - 'insights-service/**'
+      - 'ai-eval/**'
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Build shared lib
+        run: pnpm --filter @genxtaxi/ai-shared run build
+
+      - name: Lint
+        run: pnpm -r run lint || true
+
+      - name: Unit + integration tests
+        run: pnpm -r run test
+
+      - name: Build services
+        run: |
+          pnpm --filter ai-gateway run build
+          pnpm --filter currency-service run build
+          pnpm --filter chat-orchestrator run build
+          pnpm --filter insights-service run build
+
+      - name: AI evaluation gate (golden sets — spec §5)
+        run: node ai-eval/run-eval.mjs
+
+      - name: Generate OpenAPI (regression artifact)
+        run: |
+          pnpm --filter ai-gateway run openapi
+          pnpm --filter currency-service run openapi
+          pnpm --filter chat-orchestrator run openapi
+          pnpm --filter insights-service run openapi
+
+      - name: Upload OpenAPI specs
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-specs
+          path: |
+            ai-gateway/openapi.json
+            currency-service/openapi.json
+            chat-orchestrator/openapi.json
+            insights-service/openapi.json

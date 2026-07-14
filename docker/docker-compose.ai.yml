@@ -1,0 +1,98 @@
+# GenXTaxi AI platform — local dev stack (Phase 1).
+# Brings up Mongo, Redis, Prometheus, Grafana, and the two NestJS services.
+# Note: local Mongo has no Atlas Vector Search; VectorSearchService falls back
+# to in-memory cosine automatically. Use Atlas for production $vectorSearch.
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:7
+    ports: ['27017:27017']
+    volumes: ['mongo_data:/data/db']
+
+  redis:
+    image: redis:7-alpine
+    ports: ['6379:6379']
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports: ['9090:9090']
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:latest
+    ports: ['3001:3000']
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    depends_on: [prometheus]
+
+  ai-gateway:
+    build:
+      context: ..
+      dockerfile: ai-gateway/Dockerfile
+    ports: ['8080:8080']
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/genxtaxi_ai
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-match-gen-taxi-backend}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
+      CURRENCY_SERVICE_URL: http://currency-service:8081
+      DEMAND_SERVICE_URL: http://demand-service:8084
+    depends_on: [mongo, redis]
+
+  currency-service:
+    build:
+      context: ..
+      dockerfile: currency-service/Dockerfile
+    ports: ['8081:8081']
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/genxtaxi_ai
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-match-gen-taxi-backend}
+      FX_API_URL: ${FX_API_URL:-https://api.exchangerate.host/latest}
+    depends_on: [mongo, redis]
+
+  chat-orchestrator:
+    build:
+      context: ..
+      dockerfile: chat-orchestrator/Dockerfile
+    ports: ['8082:8082']
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/genxtaxi_ai
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-match-gen-taxi-backend}
+      AI_GATEWAY_URL: http://ai-gateway:8080
+      GEN_TAXI_BACKEND_URL: ${GEN_TAXI_BACKEND_URL:-http://host.docker.internal:5001}
+      CURRENCY_SERVICE_URL: http://currency-service:8081
+    depends_on: [mongo, redis, ai-gateway]
+
+  insights-service:
+    build:
+      context: ..
+      dockerfile: insights-service/Dockerfile
+    ports: ['8083:8083']
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/genxtaxi_ai
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-match-gen-taxi-backend}
+      AI_GATEWAY_URL: http://ai-gateway:8080
+      INSIGHTS_SERVICE_TOKEN: ${INSIGHTS_SERVICE_TOKEN:-}
+    depends_on: [mongo, redis, ai-gateway]
+
+  demand-service:
+    build:
+      context: ..
+      dockerfile: demand-service/Dockerfile
+    ports: ['8084:8084']
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/genxtaxi_ai
+      MONGODB_DB: genxtaxi_ai
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-match-gen-taxi-backend}
+      SURGE_ADVISORY: "true"
+    depends_on: [mongo, redis]
+
+volumes:
+  mongo_data:
