@@ -17,5 +17,10 @@
     "docker:up": "docker compose -f docker/docker-compose.ai.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.ai.yml down"
   },
-  "packageManager": "pnpm@8.15.0"
+  "packageManager": "pnpm@8.15.0",
+  "pnpm": {
+    "overrides": {
+      "cron": "3.1.7"
+    }
+  }
 }
