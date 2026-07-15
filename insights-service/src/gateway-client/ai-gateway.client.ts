@@ -14,8 +14,8 @@ export class AiGatewayClient {
   private readonly token: string;
 
   constructor(private readonly config: ConfigService<AppEnv, true>) {
-    this.baseUrl = config.get('AI_GATEWAY_URL', { infer: true });
-    this.token = config.get('INSIGHTS_SERVICE_TOKEN', { infer: true });
+    this.baseUrl = config.getOrThrow('AI_GATEWAY_URL');
+    this.token = config.getOrThrow('INSIGHTS_SERVICE_TOKEN');
   }
 
   /** Structured JSON completion (aspect extraction / summaries). Low temp. */

@@ -12,7 +12,7 @@ export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
       provide: REDIS_CLIENT,
       inject: [ConfigService],
       useFactory: (config: ConfigService<AppEnv, true>) =>
-        new Redis(config.get('REDIS_URL', { infer: true }), {
+        new Redis(config.getOrThrow('REDIS_URL'), {
           maxRetriesPerRequest: 3,
         }),
     },

@@ -29,7 +29,7 @@ export class IngestService {
     private readonly watermarks: Model<IngestWatermarkDocument>,
     private readonly filter: ContentFilterService,
   ) {
-    this.defaultLang = config.get('DEFAULT_LANG', { infer: true });
+    this.defaultLang = config.getOrThrow('DEFAULT_LANG');
   }
 
   /** Pull a batch, filter, detect bombing, and upsert. Returns count ingested. */

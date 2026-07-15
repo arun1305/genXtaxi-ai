@@ -28,10 +28,10 @@ export class SchedulerService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.addJob('insights-ingest', this.config.get('INGEST_CRON', { infer: true }), () =>
+    this.addJob('insights-ingest', this.config.getOrThrow('INGEST_CRON'), () =>
       this.runIngestCycle(),
     );
-    this.addJob('insights-zones', this.config.get('ZONE_AGGREGATION_CRON', { infer: true }), () =>
+    this.addJob('insights-zones', this.config.getOrThrow('ZONE_AGGREGATION_CRON'), () =>
       this.safe('zone-aggregation', () => this.zones.aggregateCurrentWeek()),
     );
   }
@@ -54,9 +54,9 @@ export class SchedulerService implements OnModuleInit {
       await this.ingest.ingestBatch();
       await this.aspects.processPending();
 
-      const minNew = this.config.get('SUMMARY_MIN_NEW_REVIEWS', { infer: true });
-      const maxAge = this.config.get('SUMMARY_MAX_AGE_HOURS', { infer: true });
-      const lang = this.config.get('DEFAULT_LANG', { infer: true });
+      const minNew = this.config.getOrThrow('SUMMARY_MIN_NEW_REVIEWS');
+      const maxAge = this.config.getOrThrow('SUMMARY_MAX_AGE_HOURS');
+      const lang = this.config.getOrThrow('DEFAULT_LANG');
       const due = await this.summarizer.driversNeedingRefresh(minNew, maxAge);
       for (const driverId of due) {
         await this.summarizer.recompute(driverId, lang).catch((e) =>

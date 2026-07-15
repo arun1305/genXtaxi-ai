@@ -34,9 +34,9 @@ export class SummarizerService {
     private readonly summaries: Model<DriverSummaryDocument>,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {
-    this.promptVersion = config.get('SUMMARY_PROMPT_VERSION', { infer: true });
-    this.coldStartMin = config.get('COLD_START_MIN_REVIEWS', { infer: true });
-    this.cacheTtl = config.get('SUMMARY_CACHE_TTL_SECONDS', { infer: true });
+    this.promptVersion = config.getOrThrow('SUMMARY_PROMPT_VERSION');
+    this.coldStartMin = config.getOrThrow('COLD_START_MIN_REVIEWS');
+    this.cacheTtl = config.getOrThrow('SUMMARY_CACHE_TTL_SECONDS');
   }
 
   private cacheKey(driverId: string, lang: string) {

@@ -21,7 +21,7 @@ import { HealthController } from './health.controller';
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<AppEnv, true>) => ({
-        uri: config.get('MONGODB_URI', { infer: true }),
+        uri: config.getOrThrow('MONGODB_URI'),
       }),
     }),
     ScheduleModule.forRoot(),
