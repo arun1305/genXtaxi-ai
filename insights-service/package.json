@@ -1,7 +1,7 @@
 {
   "name": "insights-service",
   "version": "1.0.0",
-  "description": "GenXTaxi insights-service — batch review summarization: aspect extraction, per-driver summaries, zone sentiment analytics (spec §3).",
+  "description": "GenXTaxi insights-service \u2014 batch review summarization: aspect extraction, per-driver summaries, zone sentiment analytics (spec \u00a73).",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
@@ -34,7 +34,8 @@
     "passport-jwt": "^4.0.1",
     "pino-http": "^10.2.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.4",
