@@ -201,8 +201,31 @@ export class OrchestratorService {
         return;
       }
 
-      // Hop cap reached without a final answer.
-      const capMsg = 'Let me get a teammate to help you with this.';
+      // Hop cap reached without a final answer — usually the model got stuck
+      // re-calling a tool. Make one last tool-less completion so the user gets a
+      // real answer instead of a dead-end escalation. Only if THAT is empty do we
+      // fall back to offering a human.
+      messages.push({
+        role: 'system',
+        content:
+          'Answer the user now in plain text using the policy/context above and general knowledge. ' +
+          'Do NOT call any tool. Do NOT state a specific price or fee unless it appeared in a tool result.',
+      });
+      let forced = '';
+      try {
+        const finalCompletion = await this.gateway.complete(user.token, {
+          task: AiTask.CHAT,
+          messages,
+          tools: [],
+          feature: 'chatbot',
+        });
+        if (this.grounding.check(finalCompletion.content, moneyAllowed).grounded) {
+          forced = finalCompletion.content?.trim() ?? '';
+        }
+      } catch (err) {
+        this.logger.warn(`Final forced completion failed: ${(err as Error).message}`);
+      }
+      const capMsg = forced || 'Let me get a teammate to help you with this.';
       await this.sessions.addMessage({ sessionId, sender: 'assistant', content: capMsg });
       for (const piece of this.tokenize(capMsg)) yield { type: 'token', data: { text: piece } };
       yield { type: 'done', data: { grounded: true } };
