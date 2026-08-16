@@ -83,10 +83,15 @@ export class OrchestratorService {
 
       // 3. Tool-calling loop (capped).
       for (let hop = 0; hop < this.maxHops; hop++) {
+        // On the final hop, withhold tools so the model MUST produce a text
+        // answer instead of proposing yet another tool call — otherwise a model
+        // stuck re-calling a failing tool exhausts the loop and gets wrongly
+        // escalated ("Let me get a teammate"). Best-effort answer beats a dead end.
+        const isLastHop = hop === this.maxHops - 1;
         const completion = await this.gateway.complete(user.token, {
           task: AiTask.CHAT,
           messages,
-          tools: TOOL_DEFS,
+          tools: isLastHop ? [] : TOOL_DEFS,
           feature: 'chatbot',
         });
 

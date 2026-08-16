@@ -91,9 +91,27 @@ export class ToolExecutorService {
   }
 
   private async getFareEstimate(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutcome> {
+    const pickup = this.parseCoords(String(args.pickup ?? ''));
+    const dropoff = this.parseCoords(String(args.dropoff ?? ''));
+    // Guard against vague/placeholder args (e.g. "user's location", a city name).
+    // Sending non-coordinate strings to /rides/estimate triggers a backend cast
+    // error, which the model then retries until the hop cap → wrongful escalation.
+    // Return a clear instruction instead of calling the backend.
+    if (typeof pickup === 'string' || typeof dropoff === 'string') {
+      return {
+        kind: 'result',
+        data: {
+          error:
+            'get_fare_estimate needs exact numeric coordinates ("lat,lng") for both pickup and dropoff. ' +
+            'You do not have them. Do NOT call this tool again — instead answer the user\'s question directly ' +
+            'from policy/context (for general pricing or surge questions no tool is needed), or ask the user for their pickup and destination.',
+        },
+        moneyAmounts: [],
+      };
+    }
     const res = await this.core.request('POST', '/rides/estimate', ctx.user.token, {
-      pickupCoords: this.parseCoords(String(args.pickup)),
-      dropoffCoords: this.parseCoords(String(args.dropoff)),
+      pickupCoords: pickup,
+      dropoffCoords: dropoff,
       rideType: args.ride_type,
     });
     const data = (res.ok ? res.data : { error: res.error }) as Record<string, unknown>;
