@@ -38,3 +38,6 @@ demand-service/.venv/
 *.apk
 .DS_Store
 .npmrc
+
+# Large local media
+*.mp4
