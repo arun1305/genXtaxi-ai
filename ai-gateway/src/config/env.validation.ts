@@ -18,8 +18,12 @@ export const envSchema = z.object({
   GROQ_API_KEY: z.string().optional().default(''),
   // Host only — the groq-sdk appends /openai/v1/chat/completions itself.
   GROQ_BASE_URL: z.string().default('https://api.groq.com'),
-  LLM_CHAT_MODEL: z.string().default('llama-3.3-70b-versatile'),
-  LLM_CHEAP_MODEL: z.string().default('llama-3.1-8b-instant'),
+  // Groq decommissioned the llama-3.x models for this account (every
+  // completion 404'd → circuit breaker opened → chatbot always degraded).
+  // gpt-oss-* are the current general-purpose chat models Groq serves and
+  // they support tool-calling, which the chatbot requires.
+  LLM_CHAT_MODEL: z.string().default('openai/gpt-oss-120b'),
+  LLM_CHEAP_MODEL: z.string().default('openai/gpt-oss-20b'),
 
   ANTHROPIC_API_KEY: z.string().optional().default(''),
   ANTHROPIC_FALLBACK_MODEL: z.string().default('claude-haiku-4-5-20251001'),
