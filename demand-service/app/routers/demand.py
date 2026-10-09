@@ -4,11 +4,12 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth import Principal, current_user, require_role
 from app.config import get_settings
 from app.db import get_db, get_redis
+from app.geo.bbox import parse_bbox
 from app.geo.h3_utils import cell_to_boundary, cells_in_bbox
 from app.predict.predictor import redis_key
 from app.schemas import HeatmapCell, HeatmapResponse, SurgeResponse
@@ -28,10 +29,13 @@ async def heatmap(
     city: str = "default",
     bbox: str = Query(..., description="min_lng,min_lat,max_lng,max_lat"),
 ):
+    try:
+        min_lng, min_lat, max_lng, max_lat = parse_bbox(bbox)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     s = get_settings()
     r = get_redis()
     db = get_db()
-    min_lng, min_lat, max_lng, max_lat = (float(x) for x in bbox.split(","))
     window = _next_window()
     cells = cells_in_bbox(min_lat, min_lng, max_lat, max_lng, s.H3_RESOLUTION)
 

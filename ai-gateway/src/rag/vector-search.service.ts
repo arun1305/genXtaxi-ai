@@ -56,7 +56,15 @@ export class VectorSearchService {
           },
         },
       ]);
-      return results;
+      if (results.length > 0) return results;
+      // Atlas returns an empty set (not an error) when the "kb_chunks_vector"
+      // index doesn't exist yet or hasn't synced, so an empty result is
+      // indistinguishable from "no match". Fall back to the cosine scan so RAG
+      // keeps working until the index is in place.
+      this.logger.warn(
+        '$vectorSearch returned no hits; falling back to in-memory cosine (is the Atlas index created?)',
+      );
+      return this.fallbackCosine(embedding, lang, topK);
     } catch (err) {
       this.logger.warn(
         `$vectorSearch unavailable (${(err as Error).message}); falling back to in-memory cosine`,
