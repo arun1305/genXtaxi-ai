@@ -1,37 +1,31 @@
-# Multi-City — Implementation Status (backend phases 2–3)
+# Multi-City — Implementation Status
 
-Branch: `gen-taxi-backend` → **`feat/multi-city`** (not merged to `main`; nothing deployed).
-Feature flag: `MULTI_CITY_ENABLED=true` (default off). Optional `MULTI_CITY_STRICT=true` refuses bookings outside every city.
+Branches: `gen-taxi-backend` → **`feat/multi-city`**, `gen-taxi-admin` → **`feat/multi-city`** (neither merged to `main`; nothing deployed).
+Flag: `MULTI_CITY_ENABLED=true` (default off). Optional `MULTI_CITY_STRICT=true` refuses bookings outside every city.
 
-## Decisions applied (from approved plan)
-City = new `City` collection grouping existing `Zone`s · passenger visibility = riders with rides in the city (history limited to that city) · drivers = home city + optional Super-Admin-approved extra cities · pricing changes need approval by default (switchable per city).
+## Implemented and tested
+**Backend (phases 2–3):** City + CityPricing (immutable effective-dated versions, approval, per-field limits); server-side city resolution on booking; city on normal/scheduled/manual rides; fare engine resolves city override at booking time and re-prices completed rides with the pinned version; dispatch + accept enforce driver city eligibility; `branch_manager` role with trusted `assignedCities`; `/api/v1/branch-manager/*` (dashboard, passengers, drivers + approve/reject + documents, rides, pricing, services, support, notifications/alerts, reports, activity, profile, change-password, CSV exports); Super Admin APIs (cities CRUD/status/analytics/comparison, boundaries, pricing governance + approvals, branch-manager accounts, driver city assignment); city-scoped socket rooms (`city:<id>`; BMs never join `admin:live`); SOS stamped with city; audit log with city/actor role; migration script (dry-run / apply / rollback, idempotent); single-city platforms auto-assign new users/drivers; driver can choose an active city at onboarding.
 
-## Implemented (with tests)
-| Area | What |
-|---|---|
-| Models | `City`, `CityPricing` (immutable, effective-dated versions); `Ride.city/cityReview/fare.pricingVersionId`; `Driver.operatingCity/additionalCities`; `User.role='branch_manager'`, `assignedCities`, `registeredCity`; `Zone.city`; `AuditLog.city/actorRole` |
-| Auth | `POST /auth/branch-manager-login` (role-isolated: BM cannot use `/auth/admin-login` and vice-versa); `authorize('admin')` rejects BMs on every existing admin route by default |
-| Super Admin API (`/api/v1/admin/…`) | `cities` CRUD, `cities/:id/status` (draft/active/inactive, active requires a zone), `cities/:id/zones/:zoneId`, `cities/:id/analytics`, `analytics/cities` (comparison; totals = sum of rows), `cities/:id/pricing` (publish), `cities/:id/pricing-policy` (approval + per-field min/max), `city-pricing/pending|:id/approve|reject`, `branch-managers`, `cities/:id/branch-managers` |
-| Branch Manager API (`/api/v1/branch-manager/…`) | `city, dashboard, passengers(+:id), drivers(+:id, approve, reject), rides(+:id), pricing (GET/PUT), reports, profile, change-password`. Scope comes only from the token's server-side `assignedCities`; header/query/body city can only **narrow** it, anything else → 403; out-of-scope records → 404 |
-| Pricing engine | Resolution: platform default (`Pricing`) ← city override version in force at `now`. Final-fare recompute is **pinned** to the booked version. Flag off ⇒ byte-identical legacy fares (regression test) |
-| Booking / dispatch | City resolved server-side from pickup polygon; draft/inactive city ⇒ `409 CITY_UNAVAILABLE`; `ride.city` set on normal, scheduled and manual-dispatch rides; dispatch and `acceptRide` enforce driver city eligibility (`403 DRIVER_OUT_OF_CITY`) |
-| Migration | `scripts/migrate-multi-city.js` — dry-run default, `--apply`, `--rollback --apply`; idempotent; verifies record counts; ambiguous rides flagged `cityReview` |
-| Audit | City/pricing/manager/driver-decision actions logged with actor role and city |
+**Super Admin UI (phase 4):** City Management (list with live stats, search/filter/paginate, create/edit, activate/deactivate with confirmation, comparison, pricing-approval queue), city detail (boundary, pricing governance + limits + version history, branch managers, services + "allow manager to change services"), Branch Managers page.
+
+**Branch Manager panel (phase 5)** at `/branch-manager/*`, separate token/login/layout: dashboard (14 KPIs, charts, date + service filters, recent rides/passengers, approval queue, alerts), passengers, drivers (review + documents + approve/reject), rides (filters, detail, fare breakdown), pricing (limit validation, preview, approval flow, history), services, support, reports, notifications (+ live pop-ups), profile/password/activity, CSV exports, light/dark theme, prominent "You are managing <city>" header.
 
 ## Test results
-- New: `tests/modules/cities/multi-city.test.js` — **19/19 pass** (isolation/IDOR, admin-route lockout, scope widening, role separation, city lifecycle, pricing limits/approval/effective dates/version pinning, driver eligibility, flag-off regression). A deliberate scoping mutation made 2 tests fail → they do detect leaks.
-- Full backend suite: **1044 / 1045 pass**. The one failure (`calls.service … sweepExpiredSessions`) is pre-existing/flaky: it also fails on the untouched baseline and passes in isolation with these changes.
-- Migration exercised on a local copy: dry-run → apply → re-apply (no-op) → rollback → re-apply; counts unchanged.
+- Backend full suite: **72 suites / 1057 tests pass** (31 new multi-city tests; includes IDOR/scope-widening, role separation, RBAC interplay, pricing limits/approval/effective dates/version pinning, driver eligibility, exports, sockets, SOS, defaults).
+- Frontend: `tsc` clean; vitest 66/66 (9 new).
+- **Browser end-to-end (Playwright, real backend + Mongo, 2 seeded cities): 28/28 steps** — SA creates/activates a city, BM isolation on every page, API-level attacks (other-city id → 404, header/query/body city → 403, admin routes → 403), approval round-trip, empty-state for a new city. Screenshots in `screenshots/multi-city/`.
+- Mutation check: removing the scope from two queries makes the isolation tests fail.
+- Migration exercised on a local DB copy: dry-run → apply → re-apply → rollback → re-apply; counts unchanged.
 
-## Rollout
-1. Deploy code with flag **off**. 2. `node scripts/migrate-multi-city.js` (dry-run) → `--apply`. 3. In Super Admin, create the zone polygon for the default city and attach it (`/cities/:id/zones/:zoneId`). 4. Set `MULTI_CITY_ENABLED=true`. Rollback: flag off → `--rollback --apply`.
-Existing `Pricing` rows are intentionally **not copied**: they remain the platform default every city inherits, so current fares don't change until a city override exists.
+## Bugs found & fixed along the way
+1. `checkPermission` locked out every existing admin (no AdminRole) once roles exist → city routes use a lenient variant (legacy admins keep access; scoped roles are enforced).
+2. Activation-failure left the confirm dialog stuck open.
+3. **Pre-existing:** `rideId = GT + Date.now()` collided for two rides in the same millisecond (E11000) → added a random suffix (was also the cause of an intermittent disputes test failure).
+4. Earlier-flaky `calls.service sweepExpiredSessions` test is unrelated and still intermittent.
 
-## NOT done yet (do not treat as complete)
-- **Phase 4** Super Admin UI (City Management, manager accounts, city analytics, pricing limits).
-- **Phase 5** Branch Manager Panel (separate routes/layout in `gen-taxi-admin`).
-- **Phase 6** Rider/driver app changes (city-unavailable messaging, driver city display).
-- City-scoped realtime rooms, notifications and background-job alerts (BMs currently join no socket room, so they receive nothing rather than too much).
-- Branch-manager support/complaints endpoint, exports (CSV/PDF), driver-document file access, city-level notification inbox.
-- Extra-city driver assignment endpoints (model + eligibility logic exist; no admin API to create assignments yet).
-- Real-production verification: `checkPermission` modules (`zones`, `pricing`, `analytics`, `admin_roles`) must be granted to the live Super Admin role; not checked against production data.
+## NOT done / needs attention before production
+- **Rider & driver apps (phase 6):** not changed. The server already refuses bookings in draft/inactive cities with `409 CITY_UNAVAILABLE` and `422 OUT_OF_SERVICE_AREA`, and `DRIVER_OUT_OF_CITY`, but the apps show their generic error instead of a friendly "service unavailable in <city>" message, and the driver app has no city display or onboarding city picker UI.
+- **Production checks not performed:** run the migration against a production copy; create real city boundary polygons; confirm `Pricing.zone`/currency behave for your live city; set `MULTI_CITY_ENABLED` only after migration.
+- Not built: dispatch-time city selection UI in the Super Admin Dispatch page; interactive map boundary drawing (boundaries are entered as a box or pasted GeoJSON); PDF/Excel exports (CSV only); email/push notifications to managers (in-app + socket only); a Super-Admin-wide multi-currency revenue total (per-city figures only, deliberately not summed across currencies).
+- Mobile/real-device behaviour, load testing and a security review by a second person have not been done.
+- `gen-taxi-admin` has no ESLint config in the repo, so lint was not run.
