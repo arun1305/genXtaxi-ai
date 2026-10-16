@@ -31,8 +31,9 @@ Flag: `MULTI_CITY_ENABLED=true` (default off). Optional `MULTI_CITY_STRICT=true`
 - **Tests:** backend 1062/1062 (36 city tests); frontend `tsc` clean; 9 new util tests pass (run with a minimal babel-jest config — see below).
 
 ## NOT done / needs attention before production
-- **Not exercised on a device/simulator:** the driver `ride:offer_rejected` alert (covered by a backend test that the event is emitted, but the alert UI itself was not triggered); the onboarding "city required" validation message and the selected-chip state (the picker itself was seen); Android.
-- **Not changed:** other screens still hard-code `₹` (AI-booking, wallet, driver earnings — the driver home shows ₹ for a New York driver); AI Booking inherits the server-side gating but its own error copy was not customised.
+- **Verified on the iOS simulator (follow-up):** onboarding "Please choose your city." validation (`33`/`34-driver-onboarding-city-required.png`) and the selected chip (`35-driver-onboarding-city-selected.png`). This exposed a bug (error stayed after choosing a city), now fixed.
+- **Still not exercised:** the driver `ride:offer_rejected` alert UI (backend test covers that the event is emitted; the alert itself was not triggered on a device); Android (no emulator/APK run); the new currency formatting has unit tests (27 passing) but was not re-checked on a simulator.
+- **Currency:** hard-coded `₹` removed from rider/driver screens; amounts now follow the city/fare currency via `store/currencyStore.ts` + `utils/money.ts` (default INR). Remaining `₹` is dev-only mock data in `paymentSlice.ts`. AI Booking now shows the service-area copy when a refusal carries a city code (not exercised end to end).
 - **Existing frontend jest setup is broken on this machine** (`jest-expo` preset fails to transform on Node 22 — the pre-existing `geo.test.ts` fails identically); the new `serviceArea` tests pass with `jest --config` using `babel-preset-expo` directly.
 - **Simulator quirk (not product code):** the dev launcher crashed once from a corrupted `expo.devlauncher.recentlyopenedapps` preference after a state reset.
 
