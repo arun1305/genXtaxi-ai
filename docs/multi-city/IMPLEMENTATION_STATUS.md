@@ -1,6 +1,6 @@
 # Multi-City — Implementation Status
 
-Branches: `gen-taxi-backend` → **`feat/multi-city`**, `gen-taxi-admin` → **`feat/multi-city`** (neither merged to `main`; nothing deployed).
+Branches: `gen-taxi-backend`, `gen-taxi-admin` → **`feat/multi-city`**; `gen-taxi-frontend` (mobile) → **`feat/multi-city-apps`** (none merged; nothing deployed).
 Flag: `MULTI_CITY_ENABLED=true` (default off). Optional `MULTI_CITY_STRICT=true` refuses bookings outside every city.
 
 ## Implemented and tested
@@ -23,8 +23,19 @@ Flag: `MULTI_CITY_ENABLED=true` (default off). Optional `MULTI_CITY_STRICT=true`
 3. **Pre-existing:** `rideId = GT + Date.now()` collided for two rides in the same millisecond (E11000) → added a random suffix (was also the cause of an intermittent disputes test failure).
 4. Earlier-flaky `calls.service sweepExpiredSessions` test is unrelated and still intermittent.
 
+## Phase 6 — rider & driver apps (implemented)
+- **Server (new):** `GET /cities/active` (minimal fields, auth) and `GET /cities/service-area?lat&lng`; `POST /rides/estimate` now refuses draft/inactive cities with `409 CITY_UNAVAILABLE` (previously only booking did); `GET /drivers/me` returns the home city; a failed socket accept now emits `ride:offer_rejected {code,message}` to the driver (it was only logged).
+- **Rider app:** checks the pick-up against the service area; shows a "Service paused in <City>" / "We're not here yet" banner, hides ride types and disables booking; maps `CITY_UNAVAILABLE` / `OUT_OF_SERVICE_AREA` errors from estimate and booking into the same friendly message (new `utils/serviceArea.ts`, `hooks/useServiceArea.ts`). Fails open if the area check itself errors (the server still enforces).
+- **Driver app:** home-city chip (shows "· paused" when the city is inactive); handles `ride:offer_rejected` (clears the stale offer and explains); onboarding city picker when several cities are active (required field), sent with `complete-onboarding`; a driver can never switch city themselves.
+- **Verified on iOS simulators against a real multi-city backend:** rider sees the paused banner in New York and normal USD fares again after reactivation; driver home shows the "New York" chip; onboarding shows the London / New York picker. Screenshots: `screenshots/multi-city/30–33`.
+- **Tests:** backend 1062/1062 (36 city tests); frontend `tsc` clean; 9 new util tests pass (run with a minimal babel-jest config — see below).
+
 ## NOT done / needs attention before production
-- **Rider & driver apps (phase 6):** not changed. The server already refuses bookings in draft/inactive cities with `409 CITY_UNAVAILABLE` and `422 OUT_OF_SERVICE_AREA`, and `DRIVER_OUT_OF_CITY`, but the apps show their generic error instead of a friendly "service unavailable in <city>" message, and the driver app has no city display or onboarding city picker UI.
+- **Not exercised on a device/simulator:** the driver `ride:offer_rejected` alert (covered by a backend test that the event is emitted, but the alert UI itself was not triggered); the onboarding "city required" validation message and the selected-chip state (the picker itself was seen); Android.
+- **Not changed:** other screens still hard-code `₹` (AI-booking, wallet, driver earnings — the driver home shows ₹ for a New York driver); AI Booking inherits the server-side gating but its own error copy was not customised.
+- **Existing frontend jest setup is broken on this machine** (`jest-expo` preset fails to transform on Node 22 — the pre-existing `geo.test.ts` fails identically); the new `serviceArea` tests pass with `jest --config` using `babel-preset-expo` directly.
+- **Simulator quirk (not product code):** the dev launcher crashed once from a corrupted `expo.devlauncher.recentlyopenedapps` preference after a state reset.
+
 - **Production checks not performed:** run the migration against a production copy; create real city boundary polygons; confirm `Pricing.zone`/currency behave for your live city; set `MULTI_CITY_ENABLED` only after migration.
 - Not built: dispatch-time city selection UI in the Super Admin Dispatch page; interactive map boundary drawing (boundaries are entered as a box or pasted GeoJSON); PDF/Excel exports (CSV only); email/push notifications to managers (in-app + socket only); a Super-Admin-wide multi-currency revenue total (per-city figures only, deliberately not summed across currencies).
 - Mobile/real-device behaviour, load testing and a security review by a second person have not been done.
