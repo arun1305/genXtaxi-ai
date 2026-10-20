@@ -46,3 +46,24 @@ Flag: `MULTI_CITY_ENABLED=true` (default off). Optional `MULTI_CITY_STRICT=true`
 - Not built: dispatch-time city selection UI in the Super Admin Dispatch page; interactive map boundary drawing (boundaries are entered as a box or pasted GeoJSON); PDF/Excel exports (CSV only); email/push notifications to managers (in-app + socket only); a Super-Admin-wide multi-currency revenue total (per-city figures only, deliberately not summed across currencies).
 - Mobile/real-device behaviour, load testing and a security review by a second person have not been done.
 - `gen-taxi-admin` has no ESLint config in the repo, so lint was not run.
+
+
+## End-to-end verification run (2026-10-20)
+Method: fresh database + an isolated backend (strict mode), driven only through the real API with live driver sockets — Super Admin creates cities/zones/managers, managers set pricing, riders and drivers in two cities ride end to end, managers are probed for isolation, a city is paused and reactivated. Plus the 28-step Playwright UI suite (Super Admin + Branch Manager panels).
+
+**Result: 183/183 API checks, 5/5 lenient-mode checks, 28/28 UI steps; backend jest 73 suites / 1077 tests; admin unit tests 9/9.**
+
+Covered: city create/activate (zone required, duplicate code, status injection), manager creation and every auth boundary (BM vs admin routes, wrong role, no token), service-area/estimate/booking gating (outside area, draft city), server-side city stamping (client-supplied city ignored), pricing governance (limits, unknown fields, approval, pending never applies, future-dated, rejected, tightened limits re-checked at approval, per-city isolation, historical fares unchanged), dispatch eligibility (home city, approved extra city, suspended/expired/future windows), full ride lifecycle in both cities, traveller account (one rider, two cities, each manager sees only their city's rides), IDOR/scope-widening attempts, exports, driver approval scope, services permission, audit rows, city socket rooms (ride_new / cancelled / driver_pending / sos), SOS scoping, scheduled rides, pause with in-flight rides, reactivation, manager reassignment/multi-city/deactivation/password change, per-city analytics vs DB.
+
+**Logical issues found and fixed** (regression tests in `tests/modules/cities/multi-city-e2e-regressions.test.js`, 9 of them fail without the fixes):
+1. Pricing: a backdated `effectiveFrom` silently lost to older versions; a proposal that sat pending could go live retroactively. Now clamped to now / approval time.
+2. Auth (pre-existing, affects every role): block / suspend / ban / deactivate never invalidated the 5-minute cached user, so a revoked account — a branch manager included — kept working. Cache is now dropped immediately.
+3. Scheduled rides skipped the city gate: could be scheduled in a paused/unserved city and were dispatched into a paused city when due. Now gated at scheduling time; a ride due while its city is paused is cancelled with no fee.
+4. Lenient mode: a ride outside every city had no city and no review flag (invisible to all managers). Now flagged `cityReview:true` for Super Admin.
+5. Branch-manager dashboard/reports summed fares across currencies for multi-currency managers. Now per currency (`money.byCurrency`, `row.currency`; UI shows one figure per currency).
+
+**Not changed / for your decision**
+- `MULTI_CITY_STRICT` is off by default: with it off an out-of-area pickup is still served (flagged for review). Turn it on once your boundaries are real.
+- A later-created version with an earlier go-live loses to a version already scheduled for the future (latest effective date wins, by design).
+- Pre-existing, outside this feature: `PATCH /rides/:id/status` does not check that the caller is the ride's driver/rider.
+- Rider/driver mobile flows were verified earlier on iOS/Android (see above); this run exercised the same backend paths through the API, not the apps again.
